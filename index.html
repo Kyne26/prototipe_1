@@ -57,6 +57,7 @@ ul{list-style:none;margin:0;padding:0}
 .c0{color:var(--c0)}.c1{color:var(--c1)}.c2{color:var(--c2)}.c3{color:var(--c3)}.c4{color:var(--c4)}
 .left{font-size:13px;white-space:nowrap;color:var(--mut)}.left.soon{color:var(--cor);font-weight:700}
 .del{border:0;background:none;color:var(--mut);font-size:13px;padding:6px}
+.it{flex-wrap:wrap}.dt{flex-basis:100%;padding:0 0 6px 38px}.dt textarea{min-height:84px}.dbtn{border:0;background:none;color:var(--sea);font-size:13px;padding:6px;font-weight:600}.dbtn.has::after{content:" \2022"}
 .empty{color:var(--mut);padding:14px 0}
 .tides{display:flex;gap:10px;height:210px;margin-top:4px}
 .tide{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px}
@@ -129,6 +130,7 @@ footer{margin-top:20px;font-size:13px;color:var(--mut);max-width:72ch}
     <div class="hl" id="hlt"></div>
     <label for="pt">Nama tugas</label><input id="pt">
     <label for="pc">Mata kuliah</label><select id="pc"></select>
+    <label for="pdt">Detail tugas (opsional)</label><textarea id="pdt" style="min-height:72px" placeholder="Contoh: Tugas Statistika adalah mengumpulkan sampel dari populasi"></textarea>
     <div class="two"><div><label for="pd">Tanggal</label><input id="pd" type="date"></div><div><label for="ptm">Jam</label><input id="ptm" type="time"></div></div>
     <div class="row"><button class="btn p" id="add">Tambah ke daftar</button></div>
   </div>
@@ -170,16 +172,16 @@ function parse(msg){
 function mark(msg,sp){let o='',p=0;for(const[i,l]of sp){if(i<p)continue;o+=esc(msg.slice(p,i))+'<mark>'+esc(msg.slice(i,i+l))+'</mark>';p=i+l;}return o+esc(msg.slice(p));}
 
 const m0=monday(today()),m1=addD(m0,7),m2=addD(m0,14);
-let nid=100,filter='open',selDay=null,undo=null,tt,wOff=0;
+let nid=100,filter='open',selDay=null,undo=null,tt,wOff=0;const openD=new Set();
 let items=[
  {id:1,title:"Kumpul tugas LKM",course:4,date:ymd(addD(m0,6)),time:"23:59"},
  {id:2,title:"Quiz Basis Data",course:1,date:ymd(addD(m1,2)),time:"10:00"},
  {id:3,title:"Presentasi kelompok",course:2,date:ymd(addD(m1,3)),time:"13:00"},
- {id:4,title:"Tugas Statistika bab 3",course:0,date:ymd(addD(m1,4)),time:"23:59"},
+ {id:4,title:"Tugas Statistika bab 3",course:0,date:ymd(addD(m1,4)),time:"23:59",detail:"Mengumpulkan sampel dari populasi (contoh simulasi)."},
  {id:5,title:"Laporan praktikum Pemrograman",course:2,date:ymd(addD(m1,4)),time:"17:00"},
  {id:6,title:"UTS Aljabar Linear",course:3,date:ymd(addD(m2,1)),time:"08:00"},
  {id:7,title:"Kumpul proposal",course:4,date:ymd(addD(m2,4)),time:"23:59"}
-].map(x=>({done:false,...x}));
+].map(x=>({done:false,detail:'',...x}));
 const diffOf=x=>Math.round((fromYmd(x.date)-today())/864e5);
 const leftTxt=n=>n<0?'terlewat':n===0?'hari ini':n===1?'besok':n+' hari lagi';
 const wl=(a,b)=>a.getMonth()===b.getMonth()?a.getDate()+'\u2013'+b.getDate()+' '+fmt(b,{month:'short'}):a.getDate()+' '+fmt(a,{month:'short'})+'\u2013'+b.getDate()+' '+fmt(b,{month:'short'});
@@ -198,7 +200,7 @@ function render(){
   const G=[['Terlewat',x=>diffOf(x)<0,'late'],['Hari ini',x=>diffOf(x)===0],['Besok',x=>diffOf(x)===1],['Minggu ini',x=>diffOf(x)>1&&fromYmd(x.date)<m1],['Berikutnya',x=>fromYmd(x.date)>=m1]];
   let h='';for(const[nm,fn,c]of G){const g=vis.filter(fn);if(!g.length)continue;
     h+=`<div class="grp ${c||''}">${nm}</div><ul>${g.map(x=>{const n=diffOf(x);
-      return`<li class="it ${x.done?'done':''}"><button class="ck" data-ck="${x.id}" aria-label="${x.done?'Tandai belum selesai':'Tandai selesai'}: ${esc(x.title)}">${x.done?'<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7.5l3.2 3L12 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}</button><div class="bd"><div class="ti">${esc(x.title)}</div><div class="meta"><span class="tag c${x.course}">${COURSES[x.course][0]}</span><span>${esc(fmt(fromYmd(x.date),{weekday:'short',day:'numeric',month:'short'}))}, ${x.time}</span></div></div><span class="left ${n<=1&&!x.done?'soon':''}">${x.done?'':leftTxt(n)}</span><button class="del" data-del="${x.id}" aria-label="Hapus ${esc(x.title)}">Hapus</button></li>`}).join('')}</ul>`;}
+      return`<li class="it ${x.done?'done':''}"><button class="ck" data-ck="${x.id}" aria-label="${x.done?'Tandai belum selesai':'Tandai selesai'}: ${esc(x.title)}">${x.done?'<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7.5l3.2 3L12 3.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}</button><div class="bd"><div class="ti">${esc(x.title)}</div><div class="meta"><span class="tag c${x.course}">${COURSES[x.course][0]}</span><span>${esc(fmt(fromYmd(x.date),{weekday:'short',day:'numeric',month:'short'}))}, ${x.time}</span></div></div><span class="left ${n<=1&&!x.done?'soon':''}">${x.done?'':leftTxt(n)}</span><button class="dbtn ${x.detail?'has':''}" data-dt="${x.id}" aria-expanded="${openD.has(x.id)}" aria-label="Detail ${esc(x.title)}">Detail</button><button class="del" data-del="${x.id}" aria-label="Hapus ${esc(x.title)}">Hapus</button>${openD.has(x.id)?`<div class="dt"><label for="dt${x.id}">Detail tugas</label><textarea id="dt${x.id}" placeholder="Tulis requirement penyelesaian tugas...">${esc(x.detail||'')}</textarea><div class="row"><button class="btn p" data-sv="${x.id}">Simpan</button></div></div>`:''}</li>`}).join('')}</ul>`;}
   $('#list').innerHTML=h||'<div class="empty">Tidak ada deadline di sini. Tempel pesan grup untuk menambahkan.</div>';
   const wk=[0,1,2,3,4].map(i=>{const a=addD(m0,(wOff+i)*7),b=addD(a,6);return{a,b,i:wOff+i,n:open.filter(x=>{const d=fromYmd(x.date);return d>=a&&d<=b}).length}});
   $('#tides').innerHTML=wk.map(w=>`<div class="tide ${w.n>=3?'busy':''}" role="listitem" aria-label="${wl(w.a,w.b)}: ${w.n} deadline"><div class="tube"><div class="wat" style="height:${Math.min(w.n/5,1)*100}%"></div><span class="num">${w.n}</span></div><div class="wk">${wl(w.a,w.b)}${w.i===0?'<br>minggu ini':''}</div></div>`).join('');
@@ -215,19 +217,21 @@ $('#read').addEventListener('click',()=>{
   const msg=$('#msg').value.trim(),st=$('#st');$('#pv').hidden=false;
   if(!msg){st.className='st wn';st.textContent='Tempel pesan dulu, atau pilih salah satu contoh.';$('#hlt').innerHTML='';return;}
   const r=parse(msg);$('#hlt').innerHTML=mark(msg,r.sp);
-  $('#pt').value=r.title;$('#pc').value=r.course;$('#pd').value=r.date;$('#ptm').value=r.time;
+  $('#pt').value=r.title;$('#pc').value=r.course;$('#pd').value=r.date;$('#ptm').value=r.time;$('#pdt').value='';
   st.className='st '+(r.found?'ok':'wn');
   st.textContent=r.found?'Bagian yang disorot terbaca otomatis. Periksa dulu sebelum ditambahkan.':'Tanggal tidak terbaca dari pesan. Pilih tanggalnya sendiri.';
 });
 $('#add').addEventListener('click',()=>{
   const title=$('#pt').value.trim(),date=$('#pd').value;
   if(!title||!date){$('#st').className='st wn';$('#st').textContent='Nama tugas dan tanggal harus terisi.';return;}
-  items.push({id:nid++,title,course:+$('#pc').value,date,time:$('#ptm').value||'23:59',done:false});
+  items.push({id:nid++,title,course:+$('#pc').value,date,time:$('#ptm').value||'23:59',done:false,detail:$('#pdt').value.trim()});
   $('#msg').value='';$('#dlg').close();wOff=Math.round((monday(fromYmd(date))-m0)/6048e5);selDay=null;render();toast('Deadline ditambahkan');
 });
 $('#list').addEventListener('click',e=>{
-  const c=e.target.closest('[data-ck]'),d=e.target.closest('[data-del]');
+  const c=e.target.closest('[data-ck]'),d=e.target.closest('[data-del]'),dt=e.target.closest('[data-dt]'),sv=e.target.closest('[data-sv]');
   if(c){const x=items.find(i=>i.id===+c.dataset.ck);x.done=!x.done;render();}
+  if(dt){const k=+dt.dataset.dt;openD.has(k)?openD.delete(k):openD.add(k);render();}
+  if(sv){const k=+sv.dataset.sv,x=items.find(i=>i.id===k);x.detail=document.getElementById('dt'+k).value.trim();openD.delete(k);render();toast('Detail tugas disimpan');}
   if(d){const x=items.find(i=>i.id===+d.dataset.del);undo=x;items=items.filter(i=>i!==x);render();toast('Deadline dihapus',true);}
 });
 $('#toast').addEventListener('click',e=>{if(e.target.id==='und'&&undo){items.push(undo);undo=null;$('#toast').hidden=true;render();}});
